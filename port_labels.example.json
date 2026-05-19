@@ -1,0 +1,6 @@
+{
+  "_comment": "Copy this file to port_labels.json (gitignored) or let the web UI create it on first save. Keys are switch port numbers as strings; values are human-friendly names.",
+  "1": "Office Camera",
+  "2": "Outdoor AP",
+  "13": "TSO_0 camera"
+}

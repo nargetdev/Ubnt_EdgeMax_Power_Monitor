@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EdgeSwitch PoE Console</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="title-block">
+        <h1>EdgeSwitch PoE Console</h1>
+        <p class="subtitle" id="switch-meta">Loading switch metadata&hellip;</p>
+      </div>
+      <div class="header-controls">
+        <div class="status-pill" id="mqtt-pill">
+          <span class="dot"></span><span class="label">MQTT</span>
+        </div>
+        <button type="button" id="refresh-btn" class="btn btn-secondary">
+          Refresh status
+        </button>
+        <button type="button" id="save-labels-btn" class="btn btn-primary" disabled>
+          Save labels
+        </button>
+      </div>
+    </header>
+
+    <section class="meta-bar">
+      <div class="meta-item">
+        <span class="meta-key">Switch</span>
+        <span class="meta-value" id="meta-switch">&mdash;</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-key">Last status</span>
+        <span class="meta-value" id="meta-last-status">never</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-key">Source</span>
+        <span class="meta-value" id="meta-status-source">&mdash;</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-key">Poll interval</span>
+        <span class="meta-value" id="meta-poll-interval">&mdash;</span>
+      </div>
+      <div class="meta-item growing">
+        <span class="meta-key">Last command</span>
+        <span class="meta-value" id="meta-last-command">none</span>
+      </div>
+    </section>
+
+    <main>
+      <div class="port-grid" id="port-grid"></div>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <template id="port-card-template">
+      <article class="port-card" data-port="">
+        <header class="port-card__header">
+          <span class="port-number"></span>
+          <span class="port-state-badge" data-role="state-badge">unknown</span>
+        </header>
+        <label class="port-label-field">
+          <span class="port-label-field__caption">Label</span>
+          <input
+            type="text"
+            class="port-label-input"
+            placeholder="(unnamed)"
+            maxlength="64"
+            data-role="label-input"
+          />
+        </label>
+        <dl class="port-readings" data-role="readings">
+          <div><dt>Detection</dt><dd data-role="detection">&mdash;</dd></div>
+          <div><dt>Class</dt><dd data-role="class">&mdash;</dd></div>
+          <div><dt>Power (W)</dt><dd data-role="consumed">&mdash;</dd></div>
+          <div><dt>V / I (mA)</dt><dd data-role="vi">&mdash;</dd></div>
+        </dl>
+        <footer class="port-actions">
+          <button type="button" class="btn btn-success" data-role="on-btn">
+            ON
+          </button>
+          <button type="button" class="btn btn-danger" data-role="off-btn">
+            OFF
+          </button>
+        </footer>
+      </article>
+    </template>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,4 +1,5 @@
 poe_control_config.json
+port_labels.json
 .env
 *.local.json
 

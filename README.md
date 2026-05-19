@@ -4,8 +4,10 @@ A small Python service that talks to a Ubiquiti EdgeSwitch over SSH (via
 [paramiko](https://www.paramiko.org/)) to:
 
 - **Publish PoE status** for every port over MQTT (`show poe status` parsed
-  into JSON), and
-- **Control PoE on/off per port** in response to MQTT commands.
+  into JSON),
+- **Control PoE on/off per port** in response to MQTT commands, and
+- **Drive both from a small built-in web UI** with editable per-port
+  labels (e.g. `port 13 → TSO_0 camera`), live status and on/off buttons.
 
 Originally built to remotely power-cycle PoE cameras and edge nodes that
 sit behind a `UBNT EdgeSwitch ES-24-500W` from any MQTT-speaking client
@@ -43,12 +45,15 @@ one-liner, …).
 | ----------------------------------- | ------------------------------------------------------------------------ |
 | `poe_control_mqtt.py`               | MQTT subscriber → SSH → toggle PoE per port. Long-running.               |
 | `poe_status_to_mqtt.py`             | Reads `show poe status` from the switch and publishes JSON. One-shot.    |
+| `web_ui.py`                         | Flask web UI: port labels, live status, on/off buttons. Long-running.    |
+| `templates/`, `static/`             | HTML, CSS, JS for the web UI.                                            |
 | `mqtt_test.py`                      | Read-only MQTT monitor that prints every message on `ubnt24/poe/#`.      |
 | `config.py`                         | Shared config loader (handles env-var overrides, gives clear errors).    |
 | `poe_control_config.example.json`   | Example config. Copy to `poe_control_config.json`; the real file is gitignored. |
+| `port_labels.example.json`          | Example port → name mapping for the web UI. Real `port_labels.json` is gitignored. |
 | `.env.example`                      | Example secrets file for docker-compose. Copy to `.env`.                 |
 | `Dockerfile`, `docker-compose.yml`  | Self-contained deploy with bundled EMQX broker (optional).               |
-| `requirements.txt`                  | `paramiko`, `paho-mqtt`.                                                 |
+| `requirements.txt`                  | `paramiko`, `paho-mqtt`, `flask`.                                        |
 
 ## Quick start (host Python)
 
@@ -100,13 +105,17 @@ environment.
 
 ### Environment variables
 
-| Variable          | What it overrides                              | Required |
-| ----------------- | ---------------------------------------------- | -------- |
-| `POE_CONFIG_PATH` | Path to the JSON config file.                  | No (defaults to `./poe_control_config.json`). |
-| `POE_PASSWORD`    | `servers[*].password` (admin + enable secret). | Yes, unless set in JSON. |
-| `MQTT_BROKER`     | `mqtt.broker`.                                 | No, but required *somewhere*. |
-| `MQTT_PORT`       | `mqtt.port`.                                   | No (defaults to 1883). |
-| `LOG_LEVEL`       | Logger level for `poe_control_mqtt.py`.        | No (defaults to `INFO`). |
+| Variable               | What it overrides                                       | Required |
+| ---------------------- | ------------------------------------------------------- | -------- |
+| `POE_CONFIG_PATH`      | Path to the JSON config file.                           | No (defaults to `./poe_control_config.json`). |
+| `POE_PASSWORD`         | `servers[*].password` (admin + enable secret).          | Yes, unless set in JSON. |
+| `MQTT_BROKER`          | `mqtt.broker`.                                          | No, but required *somewhere*. |
+| `MQTT_PORT`            | `mqtt.port`.                                            | No (defaults to 1883). |
+| `LOG_LEVEL`            | Logger level for `poe_control_mqtt.py` / `web_ui.py`.   | No (defaults to `INFO`). |
+| `WEB_UI_HOST`          | `web_ui.host` (Flask bind address).                     | No (defaults to `0.0.0.0`). |
+| `WEB_UI_PORT`          | `web_ui.port` (Flask TCP port).                         | No (defaults to `8080`). |
+| `PORT_LABELS_PATH`     | `web_ui.port_labels_path` (where labels are stored).    | No (defaults to `./port_labels.json`). |
+| `STATUS_POLL_INTERVAL` | `web_ui.status_poll_interval_seconds` (`0` disables it). | No (defaults to `30`). |
 
 ### Config schema
 
@@ -128,7 +137,14 @@ environment.
         "show poe status 0/13-0/24"
       ]
     }
-  ]
+  ],
+  "web_ui": {                         // optional; only used by web_ui.py
+    "host": "0.0.0.0",
+    "port": 8080,
+    "port_count": 24,
+    "status_poll_interval_seconds": 30,
+    "port_labels_path": "./port_labels.json"
+  }
 }
 ```
 
@@ -154,6 +170,43 @@ environment.
   The parser reads the dashed-separator line under the CLI header to
   determine column widths, so multi-word values such as `Open Circuit`
   are preserved correctly.
+
+## Web UI
+
+`web_ui.py` is a small Flask app that bundles three things for humans:
+
+- An editable **port → friendly-name mapping** persisted to
+  `port_labels.json` (gitignored; copy `port_labels.example.json` if you
+  want a starting point).
+- **Live PoE status per port** (detection / class / consumed W / V & mA).
+  It listens to `ubnt24/poe/status` *and* runs its own background SSH
+  poll every `status_poll_interval_seconds` so it works even when
+  `poe_status_to_mqtt.py` is not running on a schedule.
+- **ON / OFF buttons per port** that publish to `ubnt24/poe/<port>`.
+  The toggle path goes through MQTT, so the existing
+  `poe_control_mqtt.py` is what actually SSHes to the switch — start it
+  alongside the web UI.
+
+```bash
+# Standalone (host Python):
+python web_ui.py            # browse http://<host>:8080
+
+# With docker-compose:
+docker compose up -d --build
+# poe_web_ui, poe_control and poe_status all share the bundled broker.
+```
+
+The labels file is a flat JSON object keyed by port number:
+
+```json
+{
+  "13": "TSO_0 camera",
+  "14": "TSO_1 camera"
+}
+```
+
+You can also edit this file by hand; the UI reloads it on every page
+load.
 
 ## Running scheduled status publishes
 

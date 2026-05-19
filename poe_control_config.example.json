@@ -16,5 +16,12 @@
                 "show poe status 0/13-0/24"
             ]
         }
-    ]
+    ],
+    "web_ui": {
+        "host": "0.0.0.0",
+        "port": 8080,
+        "port_count": 24,
+        "status_poll_interval_seconds": 30,
+        "port_labels_path": "./port_labels.json"
+    }
 }

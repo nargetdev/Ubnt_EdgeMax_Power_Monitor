@@ -11,10 +11,15 @@ secrets: ship the example file with ``"password": null`` and provide the
 real password via ``POE_PASSWORD``.
 
 Recognised env vars:
-  POE_CONFIG_PATH   Absolute path to the JSON config file.
-  POE_PASSWORD      EdgeSwitch admin/enable password.
-  MQTT_BROKER       MQTT broker hostname or IP.
-  MQTT_PORT         MQTT broker TCP port (integer).
+  POE_CONFIG_PATH         Absolute path to the JSON config file.
+  POE_PASSWORD            EdgeSwitch admin/enable password.
+  MQTT_BROKER             MQTT broker hostname or IP.
+  MQTT_PORT               MQTT broker TCP port (integer).
+  PORT_LABELS_PATH        Where the web UI stores port -> name mapping.
+  WEB_UI_HOST             Bind address for the web UI Flask server.
+  WEB_UI_PORT             TCP port for the web UI Flask server.
+  STATUS_POLL_INTERVAL    Seconds between background SSH status polls
+                          (0 disables the poller).
 """
 from __future__ import annotations
 
@@ -106,4 +111,13 @@ def load_config(path: str | os.PathLike[str] | None = None) -> dict:
     if not servers:
         raise RuntimeError("Config has no 'servers' entries.")
 
-    return {"mqtt": mqtt_cfg, "servers": servers, "_config_path": str(config_path)}
+    # Optional web_ui section. Anything missing here is filled in with
+    # defaults inside web_ui.py / its env-var overrides.
+    web_ui_cfg = dict(raw.get("web_ui") or {})
+
+    return {
+        "mqtt": mqtt_cfg,
+        "servers": servers,
+        "web_ui": web_ui_cfg,
+        "_config_path": str(config_path),
+    }
