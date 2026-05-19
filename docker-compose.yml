@@ -1,0 +1,57 @@
+services:
+  poe_control:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - POE_CONFIG_PATH=/app/poe_control_config.json
+    volumes:
+      - ./poe_control_config.json:/app/poe_control_config.json:ro
+    depends_on:
+      - emqx
+    networks:
+      - poe_network
+
+  poe_status:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - POE_CONFIG_PATH=/app/poe_control_config.json
+    volumes:
+      - ./poe_control_config.json:/app/poe_control_config.json:ro
+    command: ["python", "poe_status_to_mqtt.py"]
+    depends_on:
+      - emqx
+    networks:
+      - poe_network
+
+  emqx:
+    image: emqx/emqx:5.8
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "8083:8083"
+      - "18083:18083"
+    environment:
+      - EMQX_NAME=emqx
+      - EMQX_ALLOW_ANONYMOUS=true
+    volumes:
+      - emqx_data:/opt/emqx/data
+      - emqx_log:/opt/emqx/log
+    networks:
+      - poe_network
+
+networks:
+  poe_network:
+    driver: bridge
+
+volumes:
+  emqx_data:
+  emqx_log:

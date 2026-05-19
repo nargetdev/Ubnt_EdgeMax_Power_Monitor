@@ -1,0 +1,20 @@
+{
+    "_comment": "Copy this file to poe_control_config.json and edit. The real file is gitignored. Any field set to null falls back to the matching environment variable (see README).",
+    "mqtt": {
+        "broker": null,
+        "port": 1883,
+        "topic": "ubnt24/poe/+",
+        "status_topic": "ubnt24/poe/status"
+    },
+    "servers": [
+        {
+            "host": "192.0.2.1",
+            "user": "admin",
+            "password": null,
+            "commands": [
+                "show poe status 0/1-0/12",
+                "show poe status 0/13-0/24"
+            ]
+        }
+    ]
+}
