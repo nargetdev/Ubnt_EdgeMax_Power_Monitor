@@ -10,6 +10,7 @@ services:
       - POE_CONFIG_PATH=/app/poe_control_config.json
     volumes:
       - ./poe_control_config.json:/app/poe_control_config.json:ro
+    command: ["poe-control"]
     depends_on:
       - emqx
     networks:
@@ -26,7 +27,7 @@ services:
       - POE_CONFIG_PATH=/app/poe_control_config.json
     volumes:
       - ./poe_control_config.json:/app/poe_control_config.json:ro
-    command: ["python", "poe_status_to_mqtt.py"]
+    command: ["poe-status"]
     depends_on:
       - emqx
     networks:
@@ -47,7 +48,7 @@ services:
     volumes:
       - ./poe_control_config.json:/app/poe_control_config.json:ro
       - ./port_labels.json:/app/port_labels.json
-    command: ["python", "web_ui.py"]
+    command: ["poe-web-ui"]
     ports:
       - "8080:8080"
     depends_on:

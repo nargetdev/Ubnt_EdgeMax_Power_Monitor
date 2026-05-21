@@ -53,32 +53,40 @@ one-liner, …).
 | `port_labels.example.json`          | Example port → name mapping for the web UI. Real `port_labels.json` is gitignored. |
 | `.env.example`                      | Example secrets file for docker-compose. Copy to `.env`.                 |
 | `Dockerfile`, `docker-compose.yml`  | Self-contained deploy with bundled EMQX broker (optional).               |
-| `requirements.txt`                  | `paramiko`, `paho-mqtt`, `flask`.                                        |
+| `pyproject.toml`, `uv.lock`         | Single source of truth for dependencies. Managed with [`uv`](https://docs.astral.sh/uv/). |
 
-## Quick start (host Python)
+## Quick start (host Python, via `uv`)
+
+This project uses [`uv`](https://docs.astral.sh/uv/) for all environment
+and dependency management — `pyproject.toml` + `uv.lock` are the single
+source of truth; there is no `requirements.txt`. Install `uv` once
+([standalone installer](https://docs.astral.sh/uv/getting-started/installation/)),
+then:
 
 ```bash
 git clone https://github.com/<you>/Ubnt_EdgeMax_Power_Monitor.git
 cd Ubnt_EdgeMax_Power_Monitor
 
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync                              # creates .venv/, installs the locked deps + the project
 
 cp poe_control_config.example.json poe_control_config.json
-$EDITOR poe_control_config.json   # set mqtt.broker, servers[].host, etc.
+$EDITOR poe_control_config.json      # set mqtt.broker, servers[].host, etc.
 
 export POE_PASSWORD='your-edgeswitch-admin-password'
 
-# one-shot status publish
-python poe_status_to_mqtt.py
+# Console scripts declared in pyproject.toml are installed into .venv/bin.
+# `uv run` runs them inside the project environment without manual activation.
 
-# in another shell: watch the bus
-python mqtt_test.py
-
-# start the control listener
-python poe_control_mqtt.py
+uv run poe-status                    # one-shot: SSH the switch & publish status
+uv run mqtt-test                     # (in another shell) tail ubnt24/poe/#
+uv run poe-control                   # start the long-running control listener
+uv run poe-web-ui                    # web UI at http://localhost:8080
 ```
+
+> `uv run <cmd>` automatically (re-)syncs `.venv` against the lockfile
+> before exec'ing, so you never have to remember to `source` an
+> activation script. If you prefer the classic flow,
+> `source .venv/bin/activate` after `uv sync` works the same as before.
 
 Send a command from anywhere with `mosquitto_pub`:
 
@@ -188,8 +196,8 @@ environment.
   alongside the web UI.
 
 ```bash
-# Standalone (host Python):
-python web_ui.py            # browse http://<host>:8080
+# Standalone (host Python, via uv):
+uv run poe-web-ui           # browse http://<host>:8080
 
 # With docker-compose:
 docker compose up -d --build
@@ -215,19 +223,29 @@ choice:
 
 ```cron
 */5 * * * * cd /opt/Ubnt_EdgeMax_Power_Monitor && \
-    POE_PASSWORD=... .venv/bin/python poe_status_to_mqtt.py >> /var/log/poe_status.log 2>&1
+    POE_PASSWORD=... uv run --no-sync poe-status >> /var/log/poe_status.log 2>&1
 ```
 
-…or with a systemd timer, balena pulse, GitHub Actions cron, etc.
+`--no-sync` skips the lockfile check on every invocation (fast); run a
+plain `uv sync` after pulling new commits to refresh `.venv`. You can
+also use a systemd timer, balena pulse, GitHub Actions cron, etc.
 
 ## Docker / docker-compose
 
+The container image is built on Astral's official
+`ghcr.io/astral-sh/uv:python3.12-bookworm-slim`. `uv sync --frozen`
+restores the locked dependencies into `/app/.venv`, and the three
+console scripts (`poe-control`, `poe-status`, `poe-web-ui`) are what the
+three services actually exec.
+
 ```bash
 cp poe_control_config.example.json poe_control_config.json
+cp port_labels.example.json port_labels.json    # web UI label store (gitignored)
 cp .env.example .env
 $EDITOR poe_control_config.json .env
 
 docker compose up -d --build
+# poe_web_ui → http://localhost:8080
 ```
 
 The bundled `emqx` service is optional — point `MQTT_BROKER` at an
