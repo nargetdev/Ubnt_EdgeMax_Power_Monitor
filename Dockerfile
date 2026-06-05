@@ -20,6 +20,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # 2) Add the project sources and install the project itself (cheap).
+# LICENSE and README.md are required at build time: pyproject.toml declares
+# `license = { file = "LICENSE" }` and `readme = "README.md"`, so hatchling
+# fails the wheel build if they are absent.
+COPY LICENSE README.md ./
 COPY config.py poe_control_mqtt.py poe_status_to_mqtt.py mqtt_test.py web_ui.py ./
 COPY templates ./templates
 COPY static ./static
